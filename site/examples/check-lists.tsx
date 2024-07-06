@@ -48,24 +48,11 @@ const initialValue: Descendant[] = [
     checked: true,
     children: [{ text: 'Criss-cross!' }],
   },
-  {
-    type: 'check-list-item',
-    checked: false,
-    children: [{ text: 'Cha cha real smooth…' }],
-  },
-  {
-    type: 'check-list-item',
-    checked: false,
-    children: [{ text: "Let's go to work!" }],
-  },
-  {
-    type: 'paragraph',
-    children: [{ text: 'Try it out for yourself!' }],
-  },
 ]
 
+
 const CheckListsExample = () => {
-  const renderElement = useCallback(props => <Element {...props} />, [])
+  const renderElement = useCallback(props => <ElementList {...props} />, [])
   const editor = useMemo(
     () => withChecklists(withHistory(withReact(createEditor()))),
     []
@@ -76,8 +63,6 @@ const CheckListsExample = () => {
       <Editable
         renderElement={renderElement}
         placeholder="Get to work…"
-        spellCheck
-        autoFocus
       />
     </Slate>
   )
@@ -88,8 +73,23 @@ const withChecklists = editor => {
 
   editor.deleteBackward = (...args) => {
     const { selection } = editor
+      const [match] = Editor.nodes(editor, {
+        match: n =>
+          !Editor.isEditor(n) &&
+          SlateElement.isElement(n) &&
+          n.type === 'check-list-item',
+      })
+      // match 拿到的是 删除前的值
+      console.log("back",{
+        selection,
+        isCollapsed:Range.isCollapsed(selection),
+        match,
+        args
+      })
 
+    // 确定是代码块，避免超级长的一行
     if (selection && Range.isCollapsed(selection)) {
+      // 插件匹配目前状态
       const [match] = Editor.nodes(editor, {
         match: n =>
           !Editor.isEditor(n) &&
@@ -100,7 +100,8 @@ const withChecklists = editor => {
       if (match) {
         const [, path] = match
         const start = Editor.start(editor, path)
-
+        // 获取
+        console.log(start,selection)
         if (Point.equals(selection.anchor, start)) {
           const newProperties: Partial<SlateElement> = {
             type: 'paragraph',
@@ -122,7 +123,15 @@ const withChecklists = editor => {
   return editor
 }
 
-const Element = props => {
+/**
+ *
+ render element 属性
+ attr
+ children
+ element
+
+ */
+const ElementList = props => {
   const { attributes, children, element } = props
 
   switch (element.type) {
@@ -168,8 +177,9 @@ const CheckListItemElement = ({ attributes, children, element }) => {
           }}
         />
       </span>
+      {/*  */}
       <span
-        contentEditable={!readOnly}
+        contentEditable={true}
         suppressContentEditableWarning
         className={css`
           flex: 1;
