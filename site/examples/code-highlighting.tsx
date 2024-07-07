@@ -31,7 +31,7 @@ import {
 import { withHistory } from 'slate-history'
 import isHotkey from 'is-hotkey'
 import { css } from '@emotion/css'
-import { CodeBlockElement } from './custom-types.d'
+import { CodeBlockElement, EditableVoidElement } from './custom-types.d'
 import { normalizeTokens } from '../utils/normalize-tokens'
 import { Button, Icon, Toolbar } from '../components'
 
@@ -47,7 +47,7 @@ const CodeHighlightingExample = () => {
 
   return (
     <Slate editor={editor} initialValue={initialValue}>
-      <ExampleToolbar />
+      {/* <ExampleToolbar /> */}
       <SetNodeToDecorations />
       <Editable
         decorate={decorate}
@@ -55,6 +55,7 @@ const CodeHighlightingExample = () => {
         renderLeaf={renderLeaf}
         onKeyDown={onKeyDown}
       />
+      {/* 知识点3 全局css */}
       <style>{prismThemeCss}</style>
     </Slate>
   )
@@ -130,6 +131,7 @@ const CodeBlockButton = () => {
     )
     Transforms.setNodes(
       editor,
+      // @ts-ignore
       { type: CodeLineType },
       { match: n => Element.isElement(n) && n.type === ParagraphType }
     )
@@ -149,11 +151,13 @@ const CodeBlockButton = () => {
   )
 }
 
+// 每一个 renderElement都会渲染
 const renderLeaf = (props: RenderLeafProps) => {
   const { attributes, children, leaf } = props
   const { text, ...rest } = leaf
-
+  console.log({ attributes, children, leaf } )
   return (
+    // prima 就是这样定义 class 的 ，真实奇怪
     <span {...attributes} className={Object.keys(rest).join(' ')}>
       {children}
     </span>
@@ -174,6 +178,8 @@ const useDecorate = (editor: Editor) => {
   )
 }
 
+
+// 分别拍平并且 设置
 const getChildNodeToDecorations = ([
   block,
   blockPath,
@@ -182,10 +188,11 @@ const getChildNodeToDecorations = ([
 
   const text = block.children.map(line => Node.string(line)).join('\n')
   const language = block.language
+
+  // 知识点 这里是 prima的 固定方案，网 slate 的 classname 拼装格式化就好了
   const tokens = Prism.tokenize(text, Prism.languages[language])
   const normalizedTokens = normalizeTokens(tokens) // make tokens flat and grouped by line
   const blockChildren = block.children as Element[]
-
   for (let index = 0; index < normalizedTokens.length; index++) {
     const tokens = normalizedTokens[index]
     const element = blockChildren[index]
@@ -207,10 +214,11 @@ const getChildNodeToDecorations = ([
       const range = {
         anchor: { path, offset: start },
         focus: { path, offset: end },
+        // 这里设置了属性
         token: true,
         ...Object.fromEntries(token.types.map(type => [type, true])),
       }
-
+      console.log("range:",range)
       nodeToDecorations.get(element)!.push(range)
 
       start = end
@@ -220,7 +228,11 @@ const getChildNodeToDecorations = ([
   return nodeToDecorations
 }
 
+
+// 知识点2： 这里设置 nodeToDecorations 是为了 动态格式化 | 搜索 | 高亮显示
+// nodeToDecorations
 // precalculate editor.nodeToDecorations map to use it inside decorate function then
+// Decorations 是在渲染时根据内容本身计算的。这对于动态格式化（如语法高亮或搜索关键字）很有帮助，因为内容（或某些外部数据）的更改可能会改变格式。
 const SetNodeToDecorations = () => {
   const editor = useSlate()
 
@@ -235,12 +247,13 @@ const SetNodeToDecorations = () => {
   const nodeToDecorations = mergeMaps(
     ...blockEntries.map(getChildNodeToDecorations)
   )
-
+  console.log("nodeToDecorations:", nodeToDecorations)
   editor.nodeToDecorations = nodeToDecorations
 
   return null
 }
 
+// 知识点1: 插入键盘事件
 const useOnKeydown = (editor: Editor) => {
   const onKeyDown: React.KeyboardEventHandler = useCallback(
     e => {
@@ -248,7 +261,16 @@ const useOnKeydown = (editor: Editor) => {
         // handle tab key, insert spaces
         e.preventDefault()
 
-        Editor.insertText(editor, '  ')
+        // Editor.insertText(editor, '  ')
+        const voidNode ={
+
+          type: CodeBlockType,
+          language: 'jsx',
+          children: toCodeLines(
+            'tab按下'
+          )
+        } as unknown as  EditableVoidElement
+        Transforms.insertNodes(editor, voidNode)
       }
     },
     [editor]
@@ -272,14 +294,10 @@ const LanguageSelect = (props: JSX.IntrinsicElements['select']) => {
     >
       <option value="css">CSS</option>
       <option value="html">HTML</option>
-      <option value="java">Java</option>
-      <option value="javascript">JavaScript</option>
-      <option value="jsx">JSX</option>
+
       <option value="markdown">Markdown</option>
       <option value="php">PHP</option>
-      <option value="python">Python</option>
-      <option value="sql">SQL</option>
-      <option value="tsx">TSX</option>
+
       <option value="typescript">TypeScript</option>
     </select>
   )
@@ -304,12 +322,7 @@ const toCodeLines = (content: string): Element[] =>
     .map(line => ({ type: CodeLineType, children: toChildren(line) }))
 
 const initialValue: Element[] = [
-  {
-    type: ParagraphType,
-    children: toChildren(
-      "Here's one containing a single paragraph block with some text in it:"
-    ),
-  },
+
   {
     type: CodeBlockType,
     language: 'jsx',
@@ -331,34 +344,7 @@ const App = () => {
   )
 }`),
   },
-  {
-    type: ParagraphType,
-    children: toChildren(
-      'If you are using TypeScript, you will also need to extend the Editor with ReactEditor and add annotations as per the documentation on TypeScript. The example below also includes the custom types required for the rest of this example.'
-    ),
-  },
-  {
-    type: CodeBlockType,
-    language: 'typescript',
-    children: toCodeLines(`// TypeScript users only add this code
-import { BaseEditor, Descendant } from 'slate'
-import { ReactEditor } from 'slate-react'
 
-type CustomElement = { type: 'paragraph'; children: CustomText[] }
-type CustomText = { text: string }
-
-declare module 'slate' {
-  interface CustomTypes {
-    Editor: BaseEditor & ReactEditor
-    Element: CustomElement
-    Text: CustomText
-  }
-}`),
-  },
-  {
-    type: ParagraphType,
-    children: toChildren('There you have it!'),
-  },
 ]
 
 // Prismjs theme stored as a string instead of emotion css function.
@@ -423,7 +409,6 @@ pre[class*="language-"] {
 
 :not(pre) > code[class*="language-"],
 pre[class*="language-"] {
-    background: #f5f2f0;
 }
 
 /* Inline code */
@@ -437,11 +422,11 @@ pre[class*="language-"] {
 .token.prolog,
 .token.doctype,
 .token.cdata {
-    color: slategray;
+
 }
 
 .token.punctuation {
-    color: #999;
+
 }
 
 .token.namespace {
@@ -455,7 +440,7 @@ pre[class*="language-"] {
 .token.constant,
 .token.symbol,
 .token.deleted {
-    color: #905;
+
 }
 
 .token.selector,

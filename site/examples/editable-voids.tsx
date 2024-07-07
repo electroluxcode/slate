@@ -7,6 +7,12 @@ import { css } from '@emotion/css'
 import RichTextEditor from './richtext'
 import { Button, Icon, Toolbar } from '../components'
 import { EditableVoidElement } from './custom-types.d'
+import {
+  useReadOnly,
+  ReactEditor,
+} from 'slate-react'
+
+
 
 const EditableVoidsExample = () => {
   const editor = useMemo(
@@ -18,6 +24,7 @@ const EditableVoidsExample = () => {
     <Slate editor={editor} initialValue={initialValue}>
       <Toolbar>
         <InsertEditableVoidButton />
+        {/* fdsdf */}
       </Toolbar>
 
       <Editable
@@ -31,19 +38,23 @@ const EditableVoidsExample = () => {
 const withEditableVoids = editor => {
   const { isVoid } = editor
 
-  editor.isVoid = element => {
-    return element.type === 'editable-void' ? true : isVoid(element)
-  }
+  // 知识点2:设置空元素，就是这个元素不能够被编辑
+  // video 元素似乎也是这样
+  // editor.isVoid = element => {
+  //   return element.type === 'editable-void' ? true : isVoid(element)
+  // }
 
   return editor
 }
 
+// 知识点1: 插入数据示例，其实也不难哈哈。 单纯的: EditableVoidElement.insertNode 就可以了
 const insertEditableVoid = editor => {
   const text = { text: '' }
-  const voidNode: EditableVoidElement = {
+  const voidNode = {
     type: 'editable-void',
     children: [text],
-  }
+    textValue:"插入数据示例"
+  } as  EditableVoidElement
   Transforms.insertNodes(editor, voidNode)
 }
 
@@ -63,7 +74,11 @@ const unsetWidthStyle = css`
 `
 
 const EditableVoid = ({ attributes, children, element }) => {
-  const [inputValue, setInputValue] = useState('')
+  const [inputValue, setInputValue] = useState(element?.textValue)
+  // const [inputValue, setInputValue] = useState(element?.text)
+
+  // 知识点1.1 每一次setNode都会重渲染
+  const editor = useSlateStatic()
 
   return (
     // Need contentEditable=false or Firefox has issues with certain input types.
@@ -78,29 +93,21 @@ const EditableVoid = ({ attributes, children, element }) => {
         <input
           className={css`
             margin: 8px 0;
+            opacity: ${inputValue>1 ? 1 : 0.2};
           `}
           type="text"
-          value={inputValue}
-          onChange={e => {
+          value={inputValue || ''}
+          onChange={(e:any) => {
             setInputValue(e.target.value)
+            const path = ReactEditor.findPath(editor, element)
+            const newProperties:any = {
+              textValue: e.target.value,
+            }
+            // 会触发重渲染 setNodes 的 第二个参数会被添加到 element里面
+            Transforms.setNodes(editor, newProperties, { at: path })
           }}
         />
-        <h4>Left or right handed:</h4>
-        <input
-          className={unsetWidthStyle}
-          type="radio"
-          name="handedness"
-          value="left"
-        />{' '}
-        Left
-        <br />
-        <input
-          className={unsetWidthStyle}
-          type="radio"
-          name="handedness"
-          value="right"
-        />{' '}
-        Right
+
         <h4>Tell us about yourself:</h4>
         <div
           className={css`
@@ -130,7 +137,7 @@ const InsertEditableVoidButton = () => {
   )
 }
 
-const initialValue: Descendant[] = [
+const initialValue = [
   {
     type: 'paragraph',
     children: [
@@ -141,16 +148,10 @@ const initialValue: Descendant[] = [
   },
   {
     type: 'editable-void',
-    children: [{ text: '' }],
+    children: [{ text: '5555' }],
+    textValue: "dsadda2sd"
   },
-  {
-    type: 'paragraph',
-    children: [
-      {
-        text: '',
-      },
-    ],
-  },
-]
+
+] as Descendant[]
 
 export default EditableVoidsExample
