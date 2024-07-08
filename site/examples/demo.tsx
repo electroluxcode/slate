@@ -18,20 +18,37 @@ import {
 } from 'slate'
 import { css } from '@emotion/css'
 import { withHistory } from 'slate-history'
+import { Button } from '../components'
 //
 const initialValue: Descendant[] = [
-  {
-    type: 'paragraph',
-    children: [
-      {
-        text: 'With Slate xes inside check list items!',
-      },
-    ],
-  },
+
   {
     type: 'docx-grid-block',
-    checked: true,
-    children: [{ text: 'Slide to the left.', width: "33%" }, { text: 'Slide to the left.', width: "33%" }, { text: 'Slide to the left.', width: "33%" }],
+    children: [
+      {
+        type: "grid-item",
+        width: "33%",
+        children: [{
+          type: 'paragraph',
+          children: [{ text: '11' }],
+        },]
+      },
+      {
+        type: "grid-item",
+        width: "33%",
+        children: [{
+          type: 'paragraph',
+          children: [{ text: '22' }],
+        },]
+      },{
+        type: "grid-item",
+        width: "33%",
+        children: [{
+          type: 'paragraph',
+          children: [{ text: '22' }],
+        },]
+      },
+    ],
   },
 
 ]
@@ -43,32 +60,51 @@ const CheckListsExample = () => {
     () => withChecklists(withHistory(withReact(createEditor()))),
     []
   )
-  const [target, setTarget] = useState<Range | undefined>()
-  const onKeyDown = useCallback(
-    event => {
-      if (target) {
-        switch (event.key) {
-          case 'Enter':
-            event.preventDefault()
-            Transforms.select(editor, target)
-            setTarget(null)
-            break
-        }
-      }
-    },
-    [editor, target]
-  )
-  window.editor = editor
-  return (
-    <Slate editor={editor} initialValue={initialValue}
+    setTimeout(() => {
 
+
+    }, 1000);
+  const renderLeaf = useCallback(props => <Leaf {...props} />, [])
+  window.editor = editor
+
+  const add = ()=>{
+    const pos = Editor.nodes(editor, {
+      at: [], // 编辑器的路径
+      match: (node, path) => 'grid-item' === node.type,
+      // 模式默认是 “all”，所以也可以搜索编辑器的子元素
+    })
+    let arr = []
+    for(let i of pos){
+      console.log("test:",pos,i)
+      arr.push(i)
+    }
+    console.log("pos",arr)
+    const voidNode ={
+      type: "grid-item",
+      width: "33%",
+      children: [{
+        type: 'paragraph',
+        children: [{ text: '22' }],
+      },]
+    }  as any
+    Transforms.insertNodes(editor, voidNode,{
+      at:arr[0][1]
+    })
+  }
+  return (
+    <>
+    <Button onClick={add}>click me add</Button>
+    <Slate editor={editor} initialValue={initialValue}
     >
       <Editable
+        renderLeaf={renderLeaf}
         renderElement={renderElement}
         placeholder="Get to work…"
 
       />
     </Slate>
+    </>
+
   )
 }
 
@@ -79,7 +115,7 @@ const withChecklists = editor => {
     insertBreak,
     normalizeNode,
     insertNode,
-    insertText ,
+    insertText,
     insertTextData,
     insertData,
     insertFragment,
@@ -137,17 +173,25 @@ const withChecklists = editor => {
 
 // ElementList
 const ElementList = props => {
-  // c
   const { attributes, children, element } = props
-
+  console.log("element:", { attributes, children, element } )
   switch (element.type) {
     case 'docx-grid-block':
       return <CheckListItemElement {...props} />
+    case 'grid-item':
+      return <SingleCol width={element.width}  children={children}></SingleCol>
     default:
-      return <p {...attributes}>{children}</p>
+      return <p {...props} children={children}></p>
   }
 }
 
+const Leaf = ({ attributes, children, leaf }) => {
+  if (leaf.bold) {
+    children = <strong>{children}</strong>
+  }
+
+  return <span {...attributes}>{children}</span>
+}
 
 
 const insertMention = (editor) => {
@@ -160,33 +204,29 @@ const insertMention = (editor) => {
 }
 
 
-const singleCol = ({ text, width, key, children }) => {
+const SingleCol = ({ text, width, key, children }= prop) => {
   const editor = useSlateStatic()
   let [value, setValue] = useState(text)
-  let onChange = (e) => {
-    setValue(e.target.value)
-  }
-  let onInput = (e) => {
-    setValue(e.target.value)
-  }
-  const [target, setTarget] = useState<Range | undefined>()
 
-  return <span key={key} contentEditable={true} style={{ width: width }}
-    onChange={onInput}
+  console.log("这个组件xuanran：",value)
+
+  return <div key={key} style={{ width: width }}
     suppressContentEditableWarning>
-    {value}
-  </span>
+    {children}
+  </div>
 
 }
 
 
 
 const CheckListItemElement = ({ attributes, children, element }) => {
-
   const editor = useSlateStatic()
   // const readOnly = useReadOnly()
   const { checked } = element
   console.log("测试:", { attributes, children, element })
+  const path = ReactEditor.findPath(editor,element)
+  console.log("path:",path)
+
   return (
     <div
       // {...attributes}
@@ -194,19 +234,9 @@ const CheckListItemElement = ({ attributes, children, element }) => {
         display: flex;
         flex-direction: row;
         align-items: center;
-
-
       `}
     >
-
-      {
-        element.children.map((e, index) => {
-          return (
-            singleCol({ text: e.text, width: e.width, key: index, children })
-          );
-        })
-      }
-
+      {children}
     </div>
   )
 }
