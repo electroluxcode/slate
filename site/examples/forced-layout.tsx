@@ -14,7 +14,13 @@ import { ParagraphElement, TitleElement } from './custom-types.d'
 const withLayout = editor => {
   const { normalizeNode } = editor
 
+
+  // 知识点1: normalizeNode每一次都会触发
+  // 这段代码的作用在于能够让第一行的值永远是 title类型的
   editor.normalizeNode = ([node, path]) => {
+    console.log("normal:")
+
+    // 没有值的时候，默认第一行 被设置成·title 的 Untitled
     if (path.length === 0) {
       if (editor.children.length <= 1 && Editor.string(editor, [0, 0]) === '') {
         const title: TitleElement = {

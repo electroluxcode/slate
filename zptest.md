@@ -367,10 +367,6 @@ function getCommonBlock(editor) {
 
 
 
-
-
-
-
 ### 1.2.15 键盘处理 
 
 绑定一个事件就可以了，像这样

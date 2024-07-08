@@ -686,6 +686,7 @@ export const ReactEditor: ReactEditorInterface = {
       suppressThrow: T
     }
   ): T extends true ? Point | null : Point => {
+    console.log("domPoint:", domPoint)
     const { exactMatch, suppressThrow } = options
     const [nearestNode, nearestOffset] = exactMatch
       ? domPoint
@@ -830,6 +831,7 @@ export const ReactEditor: ReactEditorInterface = {
       if (suppressThrow) {
         return null as T extends true ? Point | null : Point
       }
+
       throw new Error(
         `Cannot resolve a Slate point from DOM point: ${domPoint}`
       )

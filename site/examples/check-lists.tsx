@@ -41,7 +41,7 @@ const initialValue: Descendant[] = [
 ]
 
 
-const CheckListsExample = () => {
+const Demo = () => {
   const renderElement = useCallback(props => <ElementList {...props} />, [])
   const editor = useMemo(
     () => withChecklists(withHistory(withReact(createEditor()))),
@@ -201,4 +201,4 @@ const CheckListItemElement = ({ attributes, children, element }) => {
   )
 }
 
-export default CheckListsExample
+export default Demo
