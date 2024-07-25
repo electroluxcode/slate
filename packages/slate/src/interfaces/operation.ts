@@ -75,6 +75,7 @@ export type BaseSetNodeOperation = {
   path: Path
   properties: Partial<Node>
   newProperties: Partial<Node>
+  replace: boolean
 }
 
 export type SetNodeOperation = ExtendedType<

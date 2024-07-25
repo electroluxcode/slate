@@ -201,7 +201,7 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
     }
 
     case 'set_node': {
-      const { path, properties, newProperties } = op
+      const { path, properties, newProperties, replace } = op
 
       if (path.length === 0) {
         throw new Error(`Cannot set properties on the root node!`)
@@ -210,7 +210,7 @@ const applyToDraft = (editor: Editor, selection: Selection, op: Operation) => {
       const node = Node.get(editor, path)
 
       for (const key in newProperties) {
-        if (key === 'children' || key === 'text') {
+        if ((key === 'children' || key === 'text') && !replace) {
           throw new Error(`Cannot set the "${key}" property of nodes!`)
         }
 

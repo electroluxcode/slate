@@ -129,7 +129,7 @@ export interface NodeInterface {
    * Get the descendant node referred to by a specific path. If the path is an
    * empty array, it refers to the root node itself.
    */
-  get: (root: Node, path: Path) => Node
+  get: (root: Node & { children?: Descendant[] }, path: Path) => Node
 
   /**
    * Check if a descendant node exists at a specific path.
@@ -388,13 +388,13 @@ export const Node: NodeInterface = {
     return newRoot.children
   },
 
-  get(root: Node, path: Path): Node {
+  get(root: Node & { children?: Descendant[] }, path: Path): Node {
     let node = root
 
     for (let i = 0; i < path.length; i++) {
       const p = path[i]
 
-      if (Text.isText(node) || !node.children[p]) {
+      if (!node.children || !node.children[p]) {
         throw new Error(
           `Cannot find a descendant at path [${path}] in node: ${Scrubber.stringify(
             root
