@@ -9,6 +9,7 @@ import {
 import {
   Transforms,
   createEditor,
+  Path
 } from 'slate'
 import { withHistory } from 'slate-history'
 //
@@ -74,7 +75,6 @@ const ElementList = props => {
           "type": "one",
           "children": [
             {
-               text:"1111111",
               "type": "two",
               "children": [
                 {
@@ -91,7 +91,7 @@ const ElementList = props => {
         console.log("editor.children", editor.children)
 
         // Transforms.delete(editor, { at: path, unit: "line" })
-        Transforms.setNodes(editor, newProperties, { at: path , mode:"all"})
+        Transforms.setNodes(editor, newProperties, { at: path })
       }}
       >{children}</div>
     case 'p2':
@@ -102,6 +102,10 @@ const ElementList = props => {
         const newProperties = {
           "type": "one",
           children:[{
+            type:"two",
+            children:[{
+              text:2222222
+            }],
             text:"1111111",
           }]
         } as any
@@ -110,7 +114,7 @@ const ElementList = props => {
 
         // Transforms.delete(editor, { at: path, unit: "line" })
         // Transforms.setNodes(editor, newProperties, { at: path })
-        Transforms.insertNodes(editor, newProperties, { at: path })
+        Transforms.insertNodes(editor, newProperties, { at: (path) })
       }}
       >{children}</div>
 

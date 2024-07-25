@@ -7,19 +7,34 @@ import { Range } from '../interfaces/range'
 import { Transforms } from '../interfaces/transforms'
 import { Node } from '../interfaces/node'
 
+
+import { Point } from '../interfaces/point'
+import { Text } from '../interfaces/text'
+import { getDefaultInsertLocation } from '../utils'
+import { batchDirtyPaths } from '../core/batch-dirty-paths'
+import { BaseInsertNodeOperation } from '../interfaces'
+import { updateDirtyPaths } from '../core/update-dirty-paths'
+
+
 export const setNodes: NodeTransforms['setNodes'] = (
   editor,
-  props: Partial<Node>,
-  options = {}
+  props: any,
+  options:any = {}
 ) => {
   Editor.withoutNormalizing(editor, () => {
-    let { match, at = editor.selection, compare, merge } = options
-    const {
+    let { match, at = editor.selection, compare, merge,
       hanging = false,
       mode = 'lowest',
       split = false,
       voids = false,
+      select,
+      replace = false,
+      batchDirty = true,
+
     } = options
+
+
+      // 删除功能
 
     if (!at) {
       return
@@ -35,94 +50,164 @@ export const setNodes: NodeTransforms['setNodes'] = (
       at = Editor.unhangRange(editor, at, { voids })
     }
 
-    if (split && Range.isRange(at)) {
-      if (
-        Range.isCollapsed(at) &&
-        Editor.leaf(editor, at.anchor)[0].text.length > 0
-      ) {
-        // If the range is collapsed in a non-empty node and 'split' is true, there's nothing to
-        // set that won't get normalized away
+    const depths = Editor.nodes(editor, { at, match, mode, voids })
+    const pathRefs = Array.from(depths, ([, p]) => Editor.pathRef(editor, p))
+
+    for (const pathRef of pathRefs) {
+      const path = pathRef.unref()!
+
+      if (path) {
+        const [node] = Editor.node(editor, path)
+        editor.apply({ type: 'remove_node', path, node })
+      }
+    }
+
+
+
+
+    // 增强
+
+    let nodes = [props]
+    // 新增功能
+
+
+    // if (Node.isNode(nodes)) {
+    //   nodes = [nodes]
+    // }
+
+    if (nodes.length === 0) {
+      return
+    }
+
+    const [node] = nodes
+
+    if (!at) {
+      at = getDefaultInsertLocation(editor)
+      if (select !== false) {
+        select = true
+      }
+    }
+
+    if (select == null) {
+      select = false
+    }
+
+    if (Range.isRange(at)) {
+      if (!hanging) {
+        at = Editor.unhangRange(editor, at, { voids })
+      }
+
+      if (Range.isCollapsed(at)) {
+        at = at.anchor
+      } else {
+        const [, end] = Range.edges(at)
+        const pointRef = Editor.pointRef(editor, end)
+        Transforms.delete(editor, { at })
+        at = pointRef.unref()!
+      }
+    }
+
+    if (Point.isPoint(at)) {
+      if (match == null) {
+        if (Text.isText(node)) {
+          match = n => Text.isText(n)
+        } else if (editor.isInline(node)) {
+          match = n => Text.isText(n) || Editor.isInline(editor, n)
+        } else {
+          match = n => Element.isElement(n) && Editor.isBlock(editor, n)
+        }
+      }
+
+      const [entry] = Editor.nodes(editor, {
+        at: at.path,
+        match,
+        mode,
+        voids,
+      })
+
+      if (entry) {
+        const [, matchPath] = entry
+        const pathRef = Editor.pathRef(editor, matchPath)
+        const isAtEnd = Editor.isEnd(editor, at, matchPath)
+        Transforms.splitNodes(editor, { at, match, mode, voids })
+        const path = pathRef.unref()!
+        at = isAtEnd ? Path.next(path) : path
+      } else {
         return
       }
-      const rangeRef = Editor.rangeRef(editor, at, { affinity: 'inward' })
-      const [start, end] = Range.edges(at)
-      const splitMode = mode === 'lowest' ? 'lowest' : 'highest'
-      const endAtEndOfNode = Editor.isEnd(editor, end, end.path)
-      Transforms.splitNodes(editor, {
-        at: end,
-        match,
-        mode: splitMode,
-        voids,
-        always: !endAtEndOfNode,
-      })
-      const startAtStartOfNode = Editor.isStart(editor, start, start.path)
-      Transforms.splitNodes(editor, {
-        at: start,
-        match,
-        mode: splitMode,
-        voids,
-        always: !startAtStartOfNode,
-      })
-      at = rangeRef.unref()!
-
-      if (options.at == null) {
-        Transforms.select(editor, at)
-      }
     }
 
-    if (!compare) {
-      compare = (prop, nodeProp) => prop !== nodeProp
+    const parentPath = Path.parent(at)
+    let index = at[at.length - 1]
+
+    if (!voids && Editor.void(editor, { at: parentPath })) {
+      return
     }
 
-    for (const [node, path] of Editor.nodes(editor, {
-      at,
-      match,
-      mode,
-      voids,
-    })) {
-      const properties: Partial<Node> = {}
-      // FIXME: is this correct?
-      const newProperties: Partial<Node> & { [key: string]: unknown } = {}
+    if (batchDirty) {
+      // PERF: batch update dirty paths
+      // batched ops used to transform existing dirty paths
+      const batchedOps: BaseInsertNodeOperation[] = []
+      const newDirtyPaths: Path[] = Path.levels(parentPath)
+      batchDirtyPaths(
+        editor,
+        () => {
+          for (const node of nodes as Node[]) {
+            const path = parentPath.concat(index)
+            index++
 
-      // You can't set properties on the editor node.
-      if (path.length === 0) {
-        continue
-      }
+            const op: BaseInsertNodeOperation = {
+              type: 'insert_node',
+              path,
+              node,
+            }
+            editor.apply(op)
+            at = Path.next(at as Path)
 
-      let hasChanges = false
-
-      for (const k in props) {
-        if (k === 'children' || k === 'text') {
-          continue
-        }
-
-        if (compare(props[<keyof Node>k], node[<keyof Node>k])) {
-          hasChanges = true
-          // Omit new properties from the old properties list
-          if (node.hasOwnProperty(k))
-            properties[<keyof Node>k] = node[<keyof Node>k]
-          // Omit properties that have been removed from the new properties list
-          if (merge) {
-            if (props[<keyof Node>k] != null)
-              newProperties[<keyof Node>k] = merge(
-                node[<keyof Node>k],
-                props[<keyof Node>k]
+            batchedOps.push(op)
+            if (!Text.isText) {
+              newDirtyPaths.push(path)
+            } else {
+              newDirtyPaths.push(
+                ...Array.from(Node.nodes(node), ([, p]) => path.concat(p))
               )
-          } else {
-            if (props[<keyof Node>k] != null)
-              newProperties[<keyof Node>k] = props[<keyof Node>k]
+            }
           }
+        },
+        () => {
+          updateDirtyPaths(editor, newDirtyPaths, p => {
+            let newPath: Path | null = p
+            for (const op of batchedOps) {
+              if (Path.operationCanTransformPath(op)) {
+                newPath = Path.transform(newPath, op)
+                if (!newPath) {
+                  return null
+                }
+              }
+            }
+            return newPath
+          })
         }
-      }
+      )
+    } else {
+      for (const node of nodes as Node[]) {
+        const path = parentPath.concat(index)
+        index++
 
-      if (hasChanges) {
-        editor.apply({
-          type: 'set_node',
-          path,
-          properties,
-          newProperties,
-        })
+        editor.apply({ type: 'insert_node', path, node })
+        at = Path.next(at as Path)
       }
     }
+
+    at = Path.previous(at)
+    Transforms.move(editor, at)
+    if (select) {
+      const point = Editor.end(editor, at)
+
+      if (point) {
+        Transforms.select(editor, point)
+      }
+    }
+
   })
 }
