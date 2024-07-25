@@ -19,6 +19,7 @@ export const setNodes: NodeTransforms['setNodes'] = (
       mode = 'lowest',
       split = false,
       voids = false,
+      replace = false,
     } = options
 
     if (!at) {
@@ -92,7 +93,7 @@ export const setNodes: NodeTransforms['setNodes'] = (
       let hasChanges = false
 
       for (const k in props) {
-        if (k === 'children' || k === 'text') {
+        if ((k === 'children' || k === 'text') && !replace) {
           continue
         }
 
@@ -119,6 +120,7 @@ export const setNodes: NodeTransforms['setNodes'] = (
         editor.apply({
           type: 'set_node',
           path,
+          replace,
           properties,
           newProperties,
         })

@@ -95,6 +95,8 @@ export interface NodeTransforms {
       voids?: boolean
       compare?: PropsCompare
       merge?: PropsMerge
+      //  default false
+      replace?: boolean
     }
   ) => void
 
