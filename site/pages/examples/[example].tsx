@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { Icon } from '../../components'
-import Demo from '../../examples/demo'
+import col from '../../examples/col'
 import CheckLists from '../../examples/check-lists'
 import CodeHighlighting from '../../examples/code-highlighting'
 import EditableVoids from '../../examples/editable-voids'
@@ -34,7 +34,7 @@ import CustomPlaceholder from '../../examples/custom-placeholder'
 import { getAllExamples } from '../api'
 
 const EXAMPLES = [
-  ['Demo', Demo, 'demo'],
+  ['col', col, 'col'],
   ['Checklists', CheckLists, 'check-lists'],
   ['Editable Voids', EditableVoids, 'editable-voids'],
   ['Embeds', Embeds, 'embeds'],

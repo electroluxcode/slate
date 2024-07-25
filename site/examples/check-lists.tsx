@@ -4,39 +4,33 @@ import {
   Editable,
   withReact,
   useSlateStatic,
-  useReadOnly,
   ReactEditor,
 } from 'slate-react'
 import {
-  Editor,
   Transforms,
-  Range,
-  Point,
   createEditor,
-  Descendant,
-  Element as SlateElement,
 } from 'slate'
-import { css } from '@emotion/css'
 import { withHistory } from 'slate-history'
 //
-const initialValue: Descendant[] = [
+const initialValue: any[] = [
   {
-    type: 'paragraph',
+    type: 'p1',
     children: [
       {
-        text: 'With Slate you can build complex block types that have their own embedded content and behaviors, like rendering checkboxes inside check list items!',
+        type:"three",
+        children:[{
+          text:"three5555555"
+        }]
       },
     ],
   },
   {
-    type: 'check-list-item',
-    checked: true,
-    children: [{ text: 'Slide to the left.' }],
-  },
-  {
-    type: 'check-list-item',
-    checked: false,
-    children: [{ text: 'Slide to the right.' }],
+    type: 'p2',
+    children: [
+      {
+        text: 'p2',
+      },
+    ],
   },
 ]
 
@@ -44,10 +38,11 @@ const initialValue: Descendant[] = [
 const Demo = () => {
   const renderElement = useCallback(props => <ElementList {...props} />, [])
   const editor = useMemo(
-    () => withChecklists(withHistory(withReact(createEditor()))),
+    () => (withHistory(withReact(createEditor()))),
     []
   )
-
+  // @ts-ignore
+  window.editor = editor
   return (
     <Slate editor={editor} initialValue={initialValue}>
       <Editable
@@ -58,147 +53,70 @@ const Demo = () => {
   )
 }
 
-// 知识点2: 插件
-const withChecklists = editor => {
-  const { deleteBackward } = editor
 
-  // 知识点: 2.1 : 在delete的时候 | 首个字符的时候 设置默认格式
-  // editor.deleteBackward = (...args) => {
-  //   const { selection } = editor
-  //     const [match] = Editor.nodes(editor, {
-  //       match: n =>
-  //         !Editor.isEditor(n) &&
-  //         SlateElement.isElement(n) &&
-  //         n.type === 'check-list-item',
-  //     })
-  //     // match 拿到的是 删除前的值
-  //     console.log("back",{
-  //       selection,
-  //       isCollapsed:Range.isCollapsed(selection),
-  //       match,
-  //       args
-  //     })
-
-  //   // 确定是代码块，
-  //   if (selection && Range.isCollapsed(selection)) {
-  //     // 插件匹配目前状态
-  //     const [match] = Editor.nodes(editor, {
-  //       match: n =>
-  //         !Editor.isEditor(n) &&
-  //         SlateElement.isElement(n) &&
-  //         n.type === 'check-list-item',
-  //     })
-
-  //     if (match) {
-  //       const [, path] = match
-  //       const start = Editor.start(editor, path)
-  //       // 回退是在 首位的时候 setNode
-  //       console.log(start,selection)
-  //       if (Point.equals(selection.anchor, start)) {
-  //         const newProperties: Partial<SlateElement> = {
-  //           type: 'paragraph',
-  //         }
-  //         Transforms.setNodes(editor, newProperties, {
-  //           match: n =>
-  //             !Editor.isEditor(n) &&
-  //             SlateElement.isElement(n) &&
-  //             n.type === 'check-list-item',
-  //         })
-  //         return
-  //       }
-  //     }
-  //   }
-
-  //   deleteBackward(...args)
-  // }
-
-
-
-  return editor
-}
-
-/**
- *
- render element 属性
- attr
- children
- element
-
- */
-
-
- // ElementList
 const ElementList = props => {
-  // c
+  let editor = useSlateStatic()
   const { attributes, children, element } = props
 
   switch (element.type) {
-    case 'check-list-item':
-      return <CheckListItemElement {...props} />
-    default:
-      return <p {...attributes}>{children}</p>
+    case 'one':
+      return <div className='one' {...attributes}>{children}</div>
+    case 'two':
+        return <div className='two' {...attributes}>{children}</div>
+    case 'three':
+          return <div className='three' {...attributes}>{children}</div>
+    case 'p1':
+      return <div className='p1' {...attributes}
+
+      onClick={() => {
+        const path = ReactEditor.findPath(editor, element)
+        const newProperties = {
+          "type": "one",
+          "children": [
+            {
+               text:"1111111",
+              "type": "two",
+              "children": [
+                {
+                  "type": "three",
+                  children:[{
+                    text:"shouldbe replace"
+                  }]
+                }
+              ]
+            }
+          ]
+        } as any
+        console.log("click", path)
+        console.log("editor.children", editor.children)
+
+        // Transforms.delete(editor, { at: path, unit: "line" })
+        Transforms.setNodes(editor, newProperties, { at: path , mode:"all"})
+      }}
+      >{children}</div>
+    case 'p2':
+      return <div className='p2' {...attributes}
+
+      onClick={() => {
+        const path = ReactEditor.findPath(editor, element)
+        const newProperties = {
+          "type": "one",
+          children:[{
+            text:"1111111",
+          }]
+        } as any
+        console.log("click", path)
+        console.log("editor.children", editor.children)
+
+        // Transforms.delete(editor, { at: path, unit: "line" })
+        // Transforms.setNodes(editor, newProperties, { at: path })
+        Transforms.insertNodes(editor, newProperties, { at: path })
+      }}
+      >{children}</div>
+
   }
 }
 
 
-// 知识点1:元素怎么编写
-// 目前看 attr没有用
-// children 是真实节点
-// element是 渲染的 属性
-const CheckListItemElement = ({ attributes, children, element }) => {
-  // 知识点1.1 每一次setNode都会重渲染
-  const editor = useSlateStatic()
-  // const readOnly = useReadOnly()
-  const { checked } = element
-  console.log("测试:", { attributes, children, element })
-  return (
-    <div
-      // {...attributes}
-      className={css`
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-
-
-      `}
-    >
-      <span
-        contentEditable={false}
-        className={css`
-          margin-right: 0.75em;
-        `}
-      >
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={event => {
-            const path = ReactEditor.findPath(editor, element)
-            const newProperties: Partial<SlateElement> = {
-              checked: event.target.checked,
-            }
-            // 会触发重渲染 setNodes 的 第二个参数会被添加到 element里面
-            Transforms.setNodes(editor, newProperties, { at: path })
-          }}
-        />
-      </span>
-      {/*  */}
-      <span
-        contentEditable={true}
-        suppressContentEditableWarning
-        className={css`
-          flex: 1;
-          opacity: ${checked ? 0.666 : 1};
-          text-decoration: ${!checked ? 'none' : 'line-through'};
-
-          &:focus {
-            outline: none;
-          }
-        `}
-      >
-        {children}
-      </span>
-    </div>
-  )
-}
 
 export default Demo

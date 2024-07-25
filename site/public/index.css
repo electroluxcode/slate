@@ -89,3 +89,9 @@ iframe {
   outline-offset: -20px;
   white-space: pre-wrap;
 }
+
+
+*{
+  outline:none
+}
+
